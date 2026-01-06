@@ -1,0 +1,15 @@
+# AI/ML Core
+torch>=2.0.0
+transformers>=4.30.0
+accelerate>=0.21.0
+Pillow>=10.0.0
+einops
+sentencepiece
+protobuf
+
+# General
+yt-dlp>=2023.0.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+pyyaml>=6.0
+alive-progress
