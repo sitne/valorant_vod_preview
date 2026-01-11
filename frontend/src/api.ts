@@ -19,27 +19,27 @@ export interface Round {
     full_image_url?: string;
 }
 
-export interface Session {
+export interface SessionRounds {
     session_id: string;
-    video_url: string | null;
     created_at: string;
     status: string;
     round_count: number;
-    tags: string[];
-}
-
-export interface SessionRoundsResponse {
-    session_id: string;
     rounds: Round[];
 }
 
+export interface RoundsResponse {
+    sessions: SessionRounds[];
+    total_sessions: number;
+    rounds: number;
+}
+
 export const getStatus = async () => {
-    const res = await api.get<JobStatus>('/status');
+    const res = await api.get<JobStatus>('/api/status');
     return res.data;
 };
 
 export const getRounds = async () => {
-    const res = await api.get<{ rounds: Round[] }>('/rounds');
+    const res = await api.get<RoundsResponse>('/api/rounds');
     return res.data;
 };
 
@@ -51,26 +51,26 @@ export const startAnalyze = async (params: {
     detection_threshold?: number,
     session_id?: string
 }) => {
-    const res = await api.post('/analyze', params);
+    const res = await api.post('/api/analyze', params);
     return res.data;
 };
 
 export const stopAnalyze = async () => {
-    const res = await api.post('/stop');
+    const res = await api.post('/api/stop');
     return res.data;
 };
 
-export const getSessions = async (): Promise<Session[]> => {
-    const res = await api.get<Session[]>('/sessions');
+export const getSessions = async () => {
+    const res = await api.get<RoundsResponse>('/api/rounds');
     return res.data;
 };
 
-export const getSession = async (sessionId: string): Promise<Session> => {
-    const res = await api.get<Session>(`/sessions/${sessionId}`);
+export const getSession = async (sessionId: string) => {
+    const res = await api.get<SessionRounds>(`/api/sessions/${sessionId}`);
     return res.data;
 };
 
-export const getSessionRounds = async (sessionId: string): Promise<SessionRoundsResponse> => {
-    const res = await api.get<SessionRoundsResponse>(`/sessions/${sessionId}/rounds`);
+export const getSessionRounds = async (sessionId: string) => {
+    const res = await api.get<SessionRounds>(`/api/sessions/${sessionId}/rounds`);
     return res.data;
 };

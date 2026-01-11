@@ -125,7 +125,7 @@ def read_root():
     return {"message": "Valorant Scouting Tool API is running"}
 
 
-@app.get("/sessions", response_model=List[SessionInfo])
+@app.get("/api/sessions", response_model=List[SessionInfo])
 def get_sessions():
     """List all sessions"""
     sessions = session_manager.list_sessions()
@@ -142,7 +142,7 @@ def get_sessions():
     ]
 
 
-@app.get("/sessions/{session_id}", response_model=SessionInfo)
+@app.get("/api/sessions/{session_id}", response_model=SessionInfo)
 def get_session(session_id: str):
     """Get session details by ID"""
     session = session_manager.load_session(session_id)
@@ -159,7 +159,7 @@ def get_session(session_id: str):
     )
 
 
-@app.get("/sessions/{session_id}/rounds")
+@app.get("/api/sessions/{session_id}/rounds")
 def get_session_rounds(session_id: str):
     """List all rounds for a specific session"""
     session_dir = session_manager.get_session_dir(session_id)
@@ -192,7 +192,7 @@ def get_session_rounds(session_id: str):
     }
 
 
-@app.get("/status", response_model=JobStatus)
+@app.get("/api/status", response_model=JobStatus)
 def get_status():
     return JobStatus(
         id=current_job.id,
@@ -203,7 +203,7 @@ def get_status():
     )
 
 
-@app.post("/analyze")
+@app.post("/api/analyze")
 def start_analyze(req: AnalyzeRequest, background_tasks: BackgroundTasks):
     global current_job
     if current_job.is_running:
@@ -214,7 +214,7 @@ def start_analyze(req: AnalyzeRequest, background_tasks: BackgroundTasks):
     return {"message": "Analysis started", "job_id": job_id}
 
 
-@app.post("/stop")
+@app.post("/api/stop")
 def stop_analyze():
     global engine_instance, current_job
     if current_job.is_running and engine_instance:
@@ -223,13 +223,55 @@ def stop_analyze():
     return {"message": "No running job to stop"}
 
 
-@app.get("/rounds")
+@app.get("/api/rounds")
 def get_rounds():
-    """List all detected rounds in the output directory"""
-    rounds = []
-    # Find all round_*.png files
-    # pattern: round_{xx}.png
+    """List all detected rounds from all sessions, grouped by session"""
+    sessions_data = []
+    
+    # Get rounds from all sessions
+    sessions = session_manager.list_sessions()
+    if sessions:
+        for session_info in sessions:
+            session_id = session_info.get("session_id")
+            session_dir = session_manager.get_session_dir(session_id)
+            minimaps_dir = os.path.join(session_dir, "minimaps")
+            
+            rounds = []
+            if os.path.exists(minimaps_dir):
+                files = glob.glob(os.path.join(minimaps_dir, "round_*.png"))
+                for f in files:
+                    basename = os.path.basename(f)
+                    try:
+                        round_num = int(basename.replace("round_", "").replace(".png", ""))
+                        rounds.append(
+                            {
+                                "round": round_num,
+                                "image_url": f"/sessions/{session_id}/minimaps/{basename}",
+                                "timestamp": 0.0,
+                            }
+                        )
+                    except:
+                        continue
+            
+            if rounds:
+                sessions_data.append({
+                    "session_id": session_id,
+                    "created_at": session_info.get("created_at"),
+                    "status": session_info.get("status"),
+                    "round_count": len(rounds),
+                    "rounds": sorted(rounds, key=lambda x: x["round"])
+                })
+        
+        if sessions_data:
+            return {
+                "sessions": sessions_data,
+                "total_sessions": len(sessions_data),
+                "rounds": sum(s["round_count"] for s in sessions_data)
+            }
+    
+    # Fallback to legacy output directory structure if no sessions exist
     default_output = Config().output_dir
+    rounds = []
     files = glob.glob(os.path.join(default_output, "round_*.png"))
     for f in files:
         basename = os.path.basename(f)
@@ -243,13 +285,23 @@ def get_rounds():
                 {
                     "round": round_num,
                     "image_url": f"/static/{basename}",
-                    "timestamp": 0.0,  # TODO: read from metadata json if available
+                    "timestamp": 0.0,
                 }
             )
         except:
             continue
 
-    return {"rounds": sorted(rounds, key=lambda x: x["round"])}
+    return {
+        "sessions": [{
+            "session_id": "legacy",
+            "created_at": None,
+            "status": "legacy",
+            "round_count": len(rounds),
+            "rounds": sorted(rounds, key=lambda x: x["round"])
+        }] if rounds else [],
+        "total_sessions": 1 if rounds else 0,
+        "rounds": len(rounds)
+    }
 
 
 if __name__ == "__main__":

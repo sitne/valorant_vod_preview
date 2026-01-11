@@ -119,15 +119,36 @@ h1, h2, h3 {
   letter-spacing: 0.05em;
 }
 
-input[type="text"], input[type="number"] {
+input[type="text"], input[type="number"], textarea {
   background: var(--bg-primary);
   border: 1px solid var(--border);
   color: var(--text-primary);
   padding: 0.5rem;
   outline: none;
   font-family: inherit;
+  border-radius: 4px;
+  transition: border-color 0.1s, box-shadow 0.1s;
 }
 
-input:focus {
-  border-color: var(--text-secondary);
+input:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(255, 70, 85, 0.1);
+}
+
+/* 単一視覚プロパティで強調 */
+input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1rem;
+  margin: 0;
+}
+
+legend {
+  padding: 0 0.5rem;
+  color: var(--text-secondary);
 }
