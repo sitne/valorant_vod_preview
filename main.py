@@ -28,6 +28,16 @@ def parse_args():
     parser.add_argument("--start-time", help="Start time (hh:mm:ss, mm:ss, or ss)")
     parser.add_argument("--end-time", help="End time (hh:mm:ss, mm:ss, or ss)")
 
+    # Session management arguments
+    parser.add_argument(
+        "--session-id", help="Custom session ID (default: auto-generated)"
+    )
+    parser.add_argument(
+        "--legacy-output",
+        action="store_true",
+        help="Use legacy flat output structure (no sessions)",
+    )
+
     # Agent detection arguments
     parser.add_argument(
         "--detect-agents", action="store_true", help="Detect agent positions on minimap"
@@ -102,7 +112,7 @@ def main():
         cfg.start_time = parse_timestamp(args.start_time)
     if args.end_time:
         cfg.end_time = parse_timestamp(args.end_time)
-    
+
     if args.detection_threshold:
         cfg.detection_threshold = args.detection_threshold
     if args.similarity:
@@ -110,10 +120,16 @@ def main():
     if args.cluster_method:
         cfg.cluster_method = args.cluster_method
 
+    # Determine if using sessions (default: True unless --legacy-output is specified)
+    use_sessions = not hasattr(args, "legacy_output") or not args.legacy_output
+    session_id = getattr(args, "session_id", None)
+
     logger.info("Initializing Valorant Screenshot Tool...")
     logger.info(f"Config: {cfg}")
-    
-    engine = ScoutingEngine(cfg)
+    if use_sessions:
+        logger.info(f"Using session-based output structure")
+
+    engine = ScoutingEngine(cfg, use_sessions=use_sessions)
 
     # Check if we only need to process existing rounds (no video processing)
     skip_video_processing = (
@@ -123,11 +139,11 @@ def main():
     if not skip_video_processing:
         video_source = args.local_video if args.local_video else cfg.video_url
         try:
-            engine.process_video(local_video_path=video_source)
+            engine.process_video(local_video_path=video_source, session_id=session_id)
         except Exception as e:
             logger.critical(f"Processing failed: {e}")
             sys.exit(1)
-            
+
     # Post-processing
     if args.detect_agents or args.cluster_formations or args.generate_report:
         video_source = args.local_video or cfg.video_url
@@ -136,8 +152,9 @@ def main():
             cluster_formations=args.cluster_formations,
             generate_report=args.generate_report,
             report_format=args.report_format,
-            video_source=video_source
+            video_source=video_source,
         )
+
 
 if __name__ == "__main__":
     main()
