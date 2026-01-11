@@ -77,6 +77,12 @@ class ScoutingEngine:
         
         # 1. Video Source
         video_path = local_video_path
+        
+        # If the path looks like a URL, force it into config and clear video_path to trigger download
+        if video_path and (video_path.startswith("http://") or video_path.startswith("https://")):
+            self.cfg.video_url = video_path
+            video_path = None
+
         if not video_path and self.cfg.video_url:
             downloader = VideoDownloader("downloads")
             try:
